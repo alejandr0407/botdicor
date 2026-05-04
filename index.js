@@ -249,3 +249,17 @@ client.on('messageCreate', async message => {
 });
 
 client.login(process.env.TOKEN);
+
+const fetch = require('node-fetch');
+
+// Cambia 'tu-app' por el nombre real de tu proyecto en Render
+const APP_URL = 'https://botdicor.onrender.com'; 
+
+setInterval(async () => {
+  try {
+    const res = await fetch(APP_URL);
+    console.log(`Ping de supervivencia enviado: Status ${res.status}`);
+  } catch (err) {
+    console.error("Error en el auto-ping:", err.message);
+  }
+}, 13 * 60 * 1000); // Se ejecuta cada 13 minutos (Render apaga a los 15)
