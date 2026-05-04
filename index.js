@@ -101,7 +101,7 @@ client.on('interactionCreate', async interaction => {
     const grupo2Texto = rolesGrupo2.map(r => r.nombre).join(", ");
 
     const embed = new EmbedBuilder()
-      .setTitle("ʀᴏʟ es ᴀʟᴇᴀᴛᴏʀɪᴏs ᴀʀᴋ4ʜᴀᴍ")
+      .setTitle("ʀᴏʟᴇs ᴀʟᴇᴀᴛᴏʀɪᴏs ᴀʀᴋ4ʜᴀᴍ")
       .setColor(COLOR)
       .setDescription(
 `-# Por favor, haz clic en los botones para recibir tus roles. Estos son necesarios para tu backstory y aparecerán de forma permanente en tu perfil.
@@ -152,6 +152,7 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({
       content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
 _ _      **${rol.nombre}**
+_ _
 -# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
     });
@@ -165,6 +166,7 @@ _ _      **${rol.nombre}**
     await interaction.reply({
       content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
 _ _      **${rol.nombre}**
+_ _
 -# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
     });
