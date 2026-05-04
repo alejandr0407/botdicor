@@ -1,12 +1,14 @@
 const http = require('http');
-
-http.createServer((req, res) => {
-  res.write('Bot encendido');
-  res.end();
-}).listen(process.env.PORT || 3000, '0.0.0.0');
+const fs = require('fs');
 require("dotenv").config();
 
-console.log("TOKEN:", process.env.TOKEN);
+// =========================
+// 🌐 SERVIDOR HTTP (Para Render)
+// =========================
+http.createServer((req, res) => {
+  res.write('Bot Arkham encendido');
+  res.end();
+}).listen(process.env.PORT || 3000, '0.0.0.0');
 
 const {
   Client,
@@ -29,10 +31,10 @@ const client = new Client({
   ]
 });
 
-// 🎨 COLOR EMBED
+// 🎨 CONFIGURACIÓN VISUAL
 const COLOR = 0x0c2a40;
 
-// 🎭 GRUPOS
+// 🎭 GRUPOS DE ROLES
 const rolesGrupo1 = [
   { id: "1484745460135624826", nombre: "ᴍᴇᴅɪᴄᴏꜱ" },
   { id: "1484745682211569755", nombre: "ᴇɴꜰᴇʀᴍᴇʀᴏꜱ" },
@@ -45,37 +47,52 @@ const rolesGrupo2 = [
   { id: "1499476614839275702", nombre: "ᴛʀᴀᴛᴀʙʟᴇ" }
 ];
 
-// =========================
-// 🔒 ROLEPLAY CONTROL
-// =========================
+// 🔒 CONTROL DE ESTADOS
 let usuarioActivo = null;
 let uso1 = false;
 let uso2 = false;
 let mensajePanel = null;
 
 // =========================
-// 📌 STICKY SYSTEM
+// 💾 SISTEMA DE PERSISTENCIA (STICKY)
 // =========================
-const stickyMap = new Map();
+const STICKY_FILE = './stickies.json';
+let stickyMap = new Map();
 const stickyMsg = new Map();
 const stickyLock = new Set();
 
+// Cargar datos al iniciar el bot
+if (fs.existsSync(STICKY_FILE)) {
+  try {
+    const rawData = fs.readFileSync(STICKY_FILE, 'utf-8');
+    const jsonData = JSON.parse(rawData);
+    stickyMap = new Map(Object.entries(jsonData));
+    console.log("✅ Base de datos de Stickies cargada.");
+  } catch (err) {
+    console.error("❌ Error al leer stickies.json:", err);
+  }
+}
+
+// Función para guardar cambios en el archivo
+const guardarEnDisco = () => {
+  const dataObject = Object.fromEntries(stickyMap);
+  fs.writeFileSync(STICKY_FILE, JSON.stringify(dataObject, null, 2));
+};
+
 // =========================
-// 🟢 READY
+// 🟢 EVENTO: READY
 // =========================
 client.once('ready', () => {
   console.log(`Bot listo como ${client.user.tag}`);
 });
 
 // =========================
-// ⚙️ ROLEPLAY
+// ⚙️ COMANDO: ROLEPLAY
 // =========================
 client.on('interactionCreate', async interaction => {
-
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'roleplay') {
-
     usuarioActivo = null;
     uso1 = false;
     uso2 = false;
@@ -84,7 +101,7 @@ client.on('interactionCreate', async interaction => {
     const grupo2Texto = rolesGrupo2.map(r => r.nombre).join(", ");
 
     const embed = new EmbedBuilder()
-      .setTitle("ʀᴏʟᴇꜱ ᴀʟᴇᴀᴛᴏʀɪᴏꜱ ᴀʀᴋ4ʜᴀᴍ")
+      .setTitle("ʀᴏʟ es ᴀʟᴇᴀᴛᴏʀɪᴏs ᴀʀᴋ4ʜᴀᴍ")
       .setColor(COLOR)
       .setDescription(
 `-# Por favor, haz clic en los botones para recibir tus roles. Estos son necesarios para tu backstory y aparecerán de forma permanente en tu perfil.
@@ -102,21 +119,18 @@ _ _ ${grupo2Texto}`
       new ButtonBuilder().setCustomId('r2').setLabel('ʀᴏʟ 2').setStyle(ButtonStyle.Secondary)
     );
 
-    const msg = await interaction.reply({
+    mensajePanel = await interaction.reply({
       embeds: [embed],
       components: [row],
       fetchReply: true
     });
-
-    mensajePanel = msg;
   }
 });
 
 // =========================
-// 🔘 BOTONES
+// 🔘 LÓGICA DE BOTONES
 // =========================
 client.on('interactionCreate', async interaction => {
-
   if (!interaction.isButton()) return;
 
   if (!usuarioActivo) usuarioActivo = interaction.user.id;
@@ -131,29 +145,27 @@ client.on('interactionCreate', async interaction => {
   const member = interaction.member;
 
   if (interaction.customId === 'r1' && !uso1) {
-
     const rol = rolesGrupo1[Math.floor(Math.random() * rolesGrupo1.length)];
-    await member.roles.add(rol.id);
+    await member.roles.add(rol.id).catch(console.error);
     uso1 = true;
 
-    return interaction.reply({
+    await interaction.reply({
       content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
 _ _      **${rol.nombre}**
--#  ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
+-# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
     });
   }
 
   if (interaction.customId === 'r2' && !uso2) {
-
     const rol = rolesGrupo2[Math.floor(Math.random() * rolesGrupo2.length)];
-    await member.roles.add(rol.id);
+    await member.roles.add(rol.id).catch(console.error);
     uso2 = true;
 
-    return interaction.reply({
+    await interaction.reply({
       content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
 _ _      **${rol.nombre}**
--#  ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
+-# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
     });
   }
@@ -161,92 +173,79 @@ _ _      **${rol.nombre}**
   if (uso1 && uso2 && mensajePanel) {
     setTimeout(() => {
       mensajePanel.delete().catch(() => {});
-    }, 2000);
+    }, 2500);
   }
 });
 
 // =========================
-// 📌 STICKY SYSTEM
+// 📌 STICKY SYSTEM (PRO)
 // =========================
 client.on('messageCreate', async message => {
-
   if (message.author.bot) return;
 
   const channel = message.channel;
 
-  // !stick
+  // Comando !stick
   if (message.content.startsWith('!stick ')) {
-
     const text = message.content.slice(7).trim();
+    if (!text) return;
 
     await message.delete().catch(() => {});
 
-    const old = stickyMsg.get(channel.id);
-
-    if (old) {
-      const oldMsg = await channel.messages.fetch(old).catch(() => null);
+    // Limpiar anterior si existe
+    const oldId = stickyMsg.get(channel.id);
+    if (oldId) {
+      const oldMsg = await channel.messages.fetch(oldId).catch(() => null);
       if (oldMsg) await oldMsg.delete().catch(() => {});
     }
 
     const sent = await channel.send(`**Fijado:**\n${text}`);
-
+    
     stickyMap.set(channel.id, text);
     stickyMsg.set(channel.id, sent.id);
-
+    guardarEnDisco();
     return;
   }
 
-  // !unstick
+  // Comando !unstick
   if (message.content === '!unstick') {
-
-    stickyMap.delete(channel.id);
-
     const oldId = stickyMsg.get(channel.id);
-
     if (oldId) {
       const oldMsg = await channel.messages.fetch(oldId).catch(() => null);
       if (oldMsg) await oldMsg.delete().catch(() => {});
     }
 
+    stickyMap.delete(channel.id);
     stickyMsg.delete(channel.id);
+    guardarEnDisco();
 
     await message.delete().catch(() => {});
-
-    const msg = await channel.send("Sticky desactivado");
-
-    setTimeout(() => msg.delete().catch(() => {}), 5000);
-
+    const info = await channel.send("✅ Sticky desactivado en este canal.");
+    setTimeout(() => info.delete().catch(() => {}), 3000);
     return;
   }
 
-  // REPOST STICKY
-  const sticky = stickyMap.get(channel.id);
-
-  if (!sticky) return;
-  if (stickyLock.has(channel.id)) return;
+  // Lógica de Reposteo
+  const stickyText = stickyMap.get(channel.id);
+  if (!stickyText || stickyLock.has(channel.id)) return;
 
   stickyLock.add(channel.id);
 
   try {
-
     const oldId = stickyMsg.get(channel.id);
-
     if (oldId) {
       const oldMsg = await channel.messages.fetch(oldId).catch(() => null);
       if (oldMsg) await oldMsg.delete().catch(() => {});
     }
 
-    const newMsg = await channel.send(`**Fijado:**\n${sticky}`);
-
+    const newMsg = await channel.send(`**Fijado:**\n${stickyText}`);
     stickyMsg.set(channel.id, newMsg.id);
-
+  } catch (e) {
+    console.error("Error moviendo sticky:", e);
   } finally {
-    setTimeout(() => stickyLock.delete(channel.id), 1500);
+    // Evita que el bot se sature si hay muchos mensajes rápidos
+    setTimeout(() => stickyLock.delete(channel.id), 2000);
   }
 });
-
-// =========================
-// LOGIN
-// =========================
 
 client.login(process.env.TOKEN);
