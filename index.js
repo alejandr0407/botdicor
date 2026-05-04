@@ -1,3 +1,9 @@
+const http = require('http');
+
+http.createServer((req, res) => {
+  res.write('Bot encendido');
+  res.end();
+}).listen(process.env.PORT || 3000);
 require("dotenv").config();
 
 console.log("TOKEN:", process.env.TOKEN);
