@@ -150,8 +150,7 @@ client.on('interactionCreate', async interaction => {
     uso1 = true;
 
     await interaction.reply({
-      content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
-_ _      **${rol.nombre}**
+      content: `　　"  𝖠hora eres parte de:   **${rol.nombre}**
 _ _
 -# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
@@ -164,8 +163,7 @@ _ _
     uso2 = true;
 
     await interaction.reply({
-      content: `　　"   𝖠𝖧ᝪ𝖱𝖠 𝖤𝖱𝖤𝖲 𝖯𝖠𝖱Τ𝖤 𝖣𝖤 :   "
-_ _      **${rol.nombre}**
+      content: `　　"  𝖠hora eres parte de: **${rol.nombre}**
 _ _
 -# ʀᴇᴄᴜᴇʀᴅᴀ ǫᴜᴇ ᴛᴜs ʀᴏʟᴇs ɴᴏ sᴇ ᴄᴀᴍʙɪᴀɴ, ᴀ ᴍᴇɴᴏs ǫᴜᴇ ʙᴏᴏsᴛᴇᴇs ᴇʟ sᴇʀᴠɪᴅᴏʀ.`,
       ephemeral: true
