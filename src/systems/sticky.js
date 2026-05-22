@@ -3,11 +3,11 @@ const fs = require('fs');
 const STICKY_FILE = './stickies.json';
 
 /*
-Estructura guardada:
+Estructura:
 
 {
-  "CANAL_ID": {
-    "text": "mensaje sticky",
+  "channelId": {
+    "text": "mensaje",
     "messageId": "123456789"
   }
 }
@@ -16,30 +16,42 @@ Estructura guardada:
 let stickyMap = new Map();
 
 /*
-Canales bloqueados mientras se mueve el sticky
+Canales que actualmente están moviendo sticky
 */
-const stickyLock = new Set();
+const activeMoves = new Set();
 
 /*
-Timers para canales activos
+Timers de espera por canal
 */
-const cooldownsActivos = new Map();
+const inactivityTimers = new Map();
+
+/*
+Tiempo de espera:
+5 minutos
+*/
+const INACTIVITY_TIME = 5 * 60 * 1000;
 
 
 // ======================================================
-// CARGAR BASE DE DATOS
+// CARGAR ARCHIVO
 // ======================================================
 
 if (fs.existsSync(STICKY_FILE)) {
-  try {
-    const raw = fs.readFileSync(STICKY_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
 
-    stickyMap = new Map(Object.entries(parsed));
+  try {
+
+    const raw = fs.readFileSync(STICKY_FILE, 'utf8');
+
+    stickyMap = new Map(
+      Object.entries(JSON.parse(raw))
+    );
 
     console.log('✅ Stickies cargados.');
+
   } catch (err) {
-    console.error('❌ Error leyendo stickies.json:', err);
+
+    console.error('❌ Error cargando stickies:', err);
+
   }
 }
 
@@ -48,200 +60,225 @@ if (fs.existsSync(STICKY_FILE)) {
 // GUARDAR
 // ======================================================
 
-function guardarEnDisco() {
+function saveStickies() {
+
   fs.writeFileSync(
     STICKY_FILE,
-    JSON.stringify(Object.fromEntries(stickyMap), null, 2)
+    JSON.stringify(
+      Object.fromEntries(stickyMap),
+      null,
+      2
+    )
   );
 }
 
 
 // ======================================================
-// FUNCIÓN PRINCIPAL
+// HANDLER PRINCIPAL
 // ======================================================
 
 async function handleSticky(message) {
 
-  if (message.author.bot) return;
+  try {
 
-  const channel = message.channel;
+    if (!message.guild) return;
 
+    if (message.author.bot) return;
 
-  // ======================================================
-  // COMANDO: !stick
-  // ======================================================
+    const channel = message.channel;
 
-  if (message.content.startsWith('!stick ')) {
-
-    const text = message.content.slice(7).trim();
-
-    if (!text) return;
-
-    await message.delete().catch(() => {});
-
-    /*
-    Evitar duplicados mientras se crea
-    */
-    if (stickyLock.has(channel.id)) return;
-
-    stickyLock.add(channel.id);
-
-    try {
-
-      const oldData = stickyMap.get(channel.id);
-
-      /*
-      Borrar sticky anterior
-      */
-      if (oldData?.messageId) {
-
-        const oldMsg = await channel.messages
-          .fetch(oldData.messageId)
-          .catch(() => null);
-
-        if (oldMsg) {
-          await oldMsg.delete().catch(() => {});
-        }
-      }
-
-      /*
-      Enviar nuevo sticky
-      */
-      const sent = await channel.send(`**Fijado:**\n${text}`);
-
-      /*
-      Guardar
-      */
-      stickyMap.set(channel.id, {
-        text,
-        messageId: sent.id
-      });
-
-      guardarEnDisco();
-
-    } catch (err) {
-
-      console.error('❌ Error creando sticky:', err);
-
-    } finally {
-
-      stickyLock.delete(channel.id);
-
-    }
-
-    return;
-  }
+    const channelId = channel.id;
 
 
-  // ======================================================
-  // COMANDO: !unstick
-  // ======================================================
+    // ======================================================
+    // COMANDO !stick
+    // ======================================================
 
-  if (message.content === '!unstick') {
+    if (message.content.startsWith('!stick ')) {
 
-    if (stickyLock.has(channel.id)) return;
+      const text = message.content.slice(7).trim();
 
-    stickyLock.add(channel.id);
-
-    try {
-
-      const oldData = stickyMap.get(channel.id);
-
-      /*
-      Borrar mensaje sticky
-      */
-      if (oldData?.messageId) {
-
-        const oldMsg = await channel.messages
-          .fetch(oldData.messageId)
-          .catch(() => null);
-
-        if (oldMsg) {
-          await oldMsg.delete().catch(() => {});
-        }
-      }
-
-      /*
-      Limpiar cooldown
-      */
-      if (cooldownsActivos.has(channel.id)) {
-
-        clearTimeout(cooldownsActivos.get(channel.id));
-
-        cooldownsActivos.delete(channel.id);
-      }
-
-      /*
-      Borrar de memoria
-      */
-      stickyMap.delete(channel.id);
-
-      guardarEnDisco();
+      if (!text) return;
 
       await message.delete().catch(() => {});
 
-      const info = await channel.send(
-        '✅ Sticky desactivado en este canal.'
-      );
+      /*
+      Esperar si el canal está ocupado
+      */
+      if (activeMoves.has(channelId)) return;
 
-      setTimeout(() => {
-        info.delete().catch(() => {});
-      }, 3000);
+      activeMoves.add(channelId);
 
-    } catch (err) {
+      try {
 
-      console.error('❌ Error eliminando sticky:', err);
+        /*
+        Eliminar sticky viejo
+        */
+        const oldData = stickyMap.get(channelId);
 
-    } finally {
+        if (oldData?.messageId) {
 
-      stickyLock.delete(channel.id);
+          const oldMsg = await channel.messages
+            .fetch(oldData.messageId)
+            .catch(() => null);
 
+          if (oldMsg) {
+
+            await oldMsg.delete().catch(() => {});
+          }
+        }
+
+        /*
+        Enviar nuevo sticky
+        */
+        const sent = await channel.send(
+          `📌 **Fijado:**\n${text}`
+        );
+
+        /*
+        Guardar
+        */
+        stickyMap.set(channelId, {
+          text,
+          messageId: sent.id
+        });
+
+        saveStickies();
+
+      } catch (err) {
+
+        console.error('❌ Error creando sticky:', err);
+
+      } finally {
+
+        activeMoves.delete(channelId);
+
+      }
+
+      return;
     }
 
-    return;
+
+    // ======================================================
+    // COMANDO !unstick
+    // ======================================================
+
+    if (message.content === '!unstick') {
+
+      /*
+      Cancelar timer
+      */
+      if (inactivityTimers.has(channelId)) {
+
+        clearTimeout(inactivityTimers.get(channelId));
+
+        inactivityTimers.delete(channelId);
+      }
+
+      /*
+      Esperar si está ocupado
+      */
+      if (activeMoves.has(channelId)) return;
+
+      activeMoves.add(channelId);
+
+      try {
+
+        const oldData = stickyMap.get(channelId);
+
+        /*
+        Borrar sticky actual
+        */
+        if (oldData?.messageId) {
+
+          const oldMsg = await channel.messages
+            .fetch(oldData.messageId)
+            .catch(() => null);
+
+          if (oldMsg) {
+
+            await oldMsg.delete().catch(() => {});
+          }
+        }
+
+        /*
+        Borrar datos
+        */
+        stickyMap.delete(channelId);
+
+        saveStickies();
+
+        await message.delete().catch(() => {});
+
+        const confirm = await channel.send(
+          '✅ Sticky eliminado.'
+        );
+
+        setTimeout(() => {
+
+          confirm.delete().catch(() => {});
+
+        }, 3000);
+
+      } catch (err) {
+
+        console.error('❌ Error eliminando sticky:', err);
+
+      } finally {
+
+        activeMoves.delete(channelId);
+
+      }
+
+      return;
+    }
+
+
+    // ======================================================
+    // SI EL CANAL NO TIENE STICKY
+    // ======================================================
+
+    const stickyData = stickyMap.get(channelId);
+
+    if (!stickyData) return;
+
+
+    // ======================================================
+    // IGNORAR EL MENSAJE STICKY
+    // ======================================================
+
+    if (message.id === stickyData.messageId) return;
+
+
+    // ======================================================
+    // SI YA HAY UN TIMER -> REINICIAR
+    // ======================================================
+
+    if (inactivityTimers.has(channelId)) {
+
+      clearTimeout(
+        inactivityTimers.get(channelId)
+      );
+    }
+
+
+    // ======================================================
+    // CREAR NUEVO TIMER
+    // ======================================================
+
+    const timer = setTimeout(async () => {
+
+      await moveSticky(channel);
+
+    }, INACTIVITY_TIME);
+
+    inactivityTimers.set(channelId, timer);
+
+  } catch (err) {
+
+    console.error('❌ Error general sticky:', err);
+
   }
-
-
-  // ======================================================
-  // SI NO HAY STICKY EN EL CANAL
-  // ======================================================
-
-  const stickyData = stickyMap.get(channel.id);
-
-  if (!stickyData) return;
-
-
-  // ======================================================
-  // IGNORAR SI EL MENSAJE ES EL STICKY
-  // ======================================================
-
-  if (message.id === stickyData.messageId) return;
-
-
-  // ======================================================
-  // SI YA HAY TIMER -> REINICIAR
-  // ======================================================
-
-  if (cooldownsActivos.has(channel.id)) {
-
-    clearTimeout(cooldownsActivos.get(channel.id));
-  }
-
-
-  // ======================================================
-  // CREAR NUEVO TIMER
-  // ======================================================
-
-  const timer = setTimeout(async () => {
-
-    cooldownsActivos.delete(channel.id);
-
-    await moverSticky(channel.id, channel);
-
-  }, 10 * 1000); // 10 segundos (cambia a 10 * 60 * 1000 para 10 minutos)
-
-
-  cooldownsActivos.set(channel.id, timer);
 }
 
 
@@ -249,14 +286,16 @@ async function handleSticky(message) {
 // MOVER STICKY
 // ======================================================
 
-async function moverSticky(channelId, channel) {
+async function moveSticky(channel) {
+
+  const channelId = channel.id;
 
   /*
   Evitar doble ejecución
   */
-  if (stickyLock.has(channelId)) return;
+  if (activeMoves.has(channelId)) return;
 
-  stickyLock.add(channelId);
+  activeMoves.add(channelId);
 
   try {
 
@@ -264,9 +303,11 @@ async function moverSticky(channelId, channel) {
 
     if (!stickyData) return;
 
-    /*
-    Buscar mensaje anterior
-    */
+
+    // ======================================================
+    // BORRAR MENSAJE ANTERIOR
+    // ======================================================
+
     if (stickyData.messageId) {
 
       const oldMsg = await channel.messages
@@ -274,26 +315,31 @@ async function moverSticky(channelId, channel) {
         .catch(() => null);
 
       if (oldMsg) {
+
         await oldMsg.delete().catch(() => {});
       }
     }
 
-    /*
-    Enviar nuevo sticky
-    */
+
+    // ======================================================
+    // ENVIAR NUEVO STICKY
+    // ======================================================
+
     const newMsg = await channel.send(
-      `**Fijado:**\n${stickyData.text}`
+      `📌 **Fijado:**\n${stickyData.text}`
     );
 
-    /*
-    Actualizar ID
-    */
+
+    // ======================================================
+    // ACTUALIZAR ID
+    // ======================================================
+
     stickyMap.set(channelId, {
       text: stickyData.text,
       messageId: newMsg.id
     });
 
-    guardarEnDisco();
+    saveStickies();
 
   } catch (err) {
 
@@ -301,7 +347,7 @@ async function moverSticky(channelId, channel) {
 
   } finally {
 
-    stickyLock.delete(channelId);
+    activeMoves.delete(channelId);
 
   }
 }
